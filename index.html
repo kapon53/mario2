@@ -1,21 +1,139 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Midu Bros</title>
-  <script src="./phaser.min.js"></script>
-  <script type="module" src="./game.js"></script>
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kapon | Bizim Hikaye</title>
+
+<!-- Phaser Motoru ve Oyun Dosyan -->
+<script src="./phaser.min.js"></script>
+<script type="module" src="./game.js"></script>
+
+<style>
     body {
-      display: grid;
-      height: 100vh;
-      background: black;
-      padding-top: 5px;
+        background-color: #000; color: #fff;
+        font-family: 'Press Start 2P', 'Segoe UI', monospace, sans-serif;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box;
+        user-select: none; touch-action: none;
+        overflow: hidden;
     }
-  </style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    #game-container { position: relative; background: #0a0a0c; padding: 4px; border-radius: 8px; border: 2px solid #333; overflow: hidden; }
+    
+    /* Phaser'ın oluşturacağı canvas için ayar */
+    canvas { display: block; border-radius: 4px; image-rendering: pixelated; touch-action: none; }
+
+    #mobile-controls { display: flex; justify-content: space-between; width: 100%; max-width: 600px; margin-top: 20px; padding: 0 10px; box-sizing: border-box; }
+    .d-pad { display: flex; gap: 15px; }
+    .m-btn {
+        background: rgba(255, 255, 255, 0.1); border: 2px solid #fff; color: #fff;
+        font-size: 24px; width: 60px; height: 60px; border-radius: 50%;
+        font-weight: bold; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none; touch-action: manipulation;
+    }
+    .m-btn:active { background: #fff; color: #000; transform: scale(0.9); }
+    .btn-action { background: rgba(255, 0, 60, 0.2); border-color: #ff003c; color: #ff003c; width: 70px; height: 70px; }
+    .btn-action:active { background: #ff003c; color: #fff; }
+
+    #ui-layer {
+        position: absolute; top: 15px; left: 20px; right: 20px;
+        display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;
+        text-shadow: 2px 2px 0 #000; pointer-events: none; text-align: center;
+    }
+    .ui-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+    #mute-btn, #settings-btn {
+        position: absolute; pointer-events: auto; cursor: pointer;
+        background: rgba(0,0,0,0.45); border: 2px solid #fff; color: #fff; border-radius: 8px;
+        font-size: 12px; padding: 5px 8px; z-index: 600; display: none; 
+    }
+    #mute-btn { top: 52px; right: 14px; }
+    #settings-btn { top: 52px; right: 58px; }
+    
+    #settings-screen, #game-over-screen, #quiz-screen, #start-screen, #life-lost-screen, #level-start-screen, #level-complete-screen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        border-radius: 8px; padding: 20px; box-sizing: border-box; text-align: center;
+    }
+    
+    #settings-screen { background: rgba(10, 10, 20, 0.96); z-index: 4000; }
+    #settings-screen h2 { color: #fff; font-size: 1.1em; margin-bottom: 25px; }
+    .settings-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 22px; width: 80%; max-width: 320px; }
+    .settings-row label { color: #ffd400; font-size: 0.7em; }
+    .settings-row input[type="range"] { width: 100%; accent-color: #ff003c; }
+    
+    #level-start-screen { background: #000; z-index: 2500; }
+    #level-complete-screen { background: rgba(0,0,0,0.9); z-index: 2500; }
+    #game-over-screen { background: rgba(0, 0, 0, 0.92); z-index: 1000; white-space: pre-line; }
+    #go-title { font-size: 1.4em; margin: 0 0 15px 0; line-height: 1.4; color: #ff003c; text-shadow: 0 0 10px #ff003c; }
+
+    #life-lost-screen { background: rgba(0, 0, 0, 0.95); z-index: 950; white-space: pre-line; }
+    #ll-title { font-size: 1.2em; margin: 0 0 10px 0; line-height: 1.4; color: #ff5c5c; }
+    #ll-sub { font-size: 0.8em; margin-bottom: 20px; color: #fff; }
+
+    button.game-btn {
+        margin-top: 10px; padding: 12px 25px; font-size: 1em; font-weight: bold;
+        background: #ff003c; color: #fff; border: 2px solid #fff; border-radius: 8px; cursor: pointer; text-transform: uppercase;
+        font-family: 'Press Start 2P', monospace;
+    }
+    button.game-btn:active { transform: scale(0.95); }
+
+    #quiz-screen { background: rgba(43, 0, 82, 0.96); z-index: 2000; }
+    #quiz-question { font-size: 1.05em; color: #fff; margin-bottom: 25px; line-height: 1.5; text-shadow: 0 0 10px #b026ff; }
+    #quiz-input {
+        width: 80%; max-width: 300px; padding: 12px; font-size: 16px; font-weight: bold;
+        border: 2px solid #b026ff; border-radius: 8px; background: #111; color: #fff;
+        text-align: center; outline: none; margin-bottom: 20px; font-family: sans-serif;
+    }
+    #quiz-input:focus { box-shadow: 0 0 15px #b026ff; }
+    #quiz-submit { background: #b026ff; color: #fff; border: 2px solid #fff; padding: 12px 30px; font-size: 1em; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: 'Press Start 2P', monospace;}
+
+    #start-screen { background: #000; z-index: 3000; display: flex; }
+    #start-title { color: #ff003c; font-size: 1.6em; text-shadow: 0 0 15px #ff003c; margin-bottom: 10px; }
+    #start-sub { color: #fff; font-size: 0.7em; margin-bottom: 25px; line-height: 1.8; max-width: 80%; }
+    #start-btn { background: #00c853; padding: 14px 30px; font-size: 1.1em; border-color: #fff; }
+
+    @media (max-width: 768px) { canvas { width: 100%; height: auto; } #ui-layer { font-size: 10px; } }
+</style>
 </head>
 <body>
-  <div id="game"></div>
+
+<div id="game-container">
+    
+    <!-- Phaser oyununu buraya çizecek -->
+    <div id="game"></div>
+
+    <div id="ui-layer">
+        <div class="ui-col"><span>İREM</span><span id="score">000000</span></div>
+        <div class="ui-col"><span>🪙</span><span id="coins">x000</span></div>
+        <div class="ui-col"><span>BÖLÜM</span><span id="world-label">1-1</span></div>
+        <div class="ui-col"><span>CAN</span><span id="hearts">❤x3</span></div>
+    </div>
+
+    <!-- Eski ekranların ve arayüzlerin aynen duruyor -->
+    <div id="start-screen">
+        <div id="start-title">BİZİM HİKAYE</div>
+        <div id="start-sub">Bu macera 4 ayrı bölümden oluşuyor.<br><br>Yoluna çıkan mor kutuları kafa atarak aç, anılarımızı hatırla ve soruları bil.<br><br>Gizli kalpleri bularak can kazan!</div>
+        <button class="game-btn" id="start-btn">YENİ OYUN</button>
+    </div>
+
+    <div id="quiz-screen">
+        <div id="quiz-question">Soru</div>
+        <input type="text" id="quiz-input" placeholder="Cevabı yaz..." autocomplete="off">
+        <button id="quiz-submit">CEVAPLA</button>
+    </div>
+</div>
+
+<div id="mobile-controls">
+    <div class="d-pad">
+        <div class="m-btn" id="btn-left">◀</div>
+        <div class="m-btn" id="btn-down" style="font-size:18px;">▼</div>
+        <div class="m-btn" id="btn-right">▶</div>
+    </div>
+    <div class="m-btn btn-action" id="btn-jump">B</div>
+</div>
+
 </body>
 </html>
