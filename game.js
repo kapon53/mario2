@@ -1,116 +1,104 @@
-/* global Phaser */
-
 import { createAnimations } from "./animations.js"
 
+// Mobil tuşların durumunu tutacağımız değişkenler
+let isLeftDown = false;
+let isRightDown = false;
+let isJumpDown = false;
+
+// HTML'deki butonları JavaScript'e bağlıyoruz
+document.getElementById('btn-left').addEventListener('pointerdown', () => isLeftDown = true);
+document.getElementById('btn-left').addEventListener('pointerup', () => isLeftDown = false);
+
+document.getElementById('btn-right').addEventListener('pointerdown', () => isRightDown = true);
+document.getElementById('btn-right').addEventListener('pointerup', () => isRightDown = false);
+
+document.getElementById('btn-jump').addEventListener('pointerdown', () => isJumpDown = true);
+document.getElementById('btn-jump').addEventListener('pointerup', () => isJumpDown = false);
+
 const config = {
-  type: Phaser.AUTO, // webgl, canvas
-  width: 256,
-  height: 244,
-  backgroundColor: '#049cd8',
-  parent: 'game',
+  type: Phaser.AUTO,
+  width: 900,  
+  height: 500, 
+  backgroundColor: '#5c94fc',
+  parent: 'game', 
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 300 },
+      gravity: { y: 600 }, 
       debug: false
     }
   },
   scene: {
-    preload, // se ejecuta para precargar recursos
-    create, // se ejecuta cuando el juego comienza
-    update // se ejecuta en cada frame
+    preload,
+    create,
+    update
   }
 }
 
 new Phaser.Game(config)
-// this -> game -> el juego que estamos construyendo
 
 function preload () {
-  this.load.image(
-    'cloud1',
-    'assets/scenery/overworld/cloud1.png'
-  )
-
-  this.load.image(
-    'floorbricks',
-    'assets/scenery/overworld/floorbricks.png'
-  )
-
-  this.load.spritesheet(
-    'mario', // <--- id
-    'assets/entities/mario.png',
-    { frameWidth: 18, frameHeight: 16 }
-  )
-
-  this.load.audio('gameover', 'assets/sound/music/gameover.mp3')
-} // 1.
+  // Klasör yapısına geri döndüğümüz için yolları assets/... olarak güncelledik
+  this.load.image('floorbricks', 'assets/scenery/overworld/floorbricks.png') 
+  this.load.spritesheet('mario', 'assets/entities/mario.png', { frameWidth: 18, frameHeight: 16 }) 
+  
+  // Kendi özel bloğunu yüklüyoruz (Eğer block.png "blocks" klasöründeyse yolu böyle olmalı)
+  // Not: Dosya adı customBlock.png ise onu yazmayı unutma!
+  this.load.image('ozelBlok', 'assets/blocks/block.png')
+}
 
 function create () {
-  // image(x, y, id-del-asset)
-  this.add.image(100, 50, 'cloud1')
-    .setOrigin(0, 0)
-    .setScale(0.15)
-
+  // Zemin oluşturma
   this.floor = this.physics.add.staticGroup()
+  
+  // Alt zemini diziyoruz
+  for(let i=0; i<30; i++) {
+     this.floor.create(i * 32, 480, 'floorbricks').setOrigin(0, 0.5).refreshBody()
+  }
 
-  this.floor
-    .create(0, config.height - 16, 'floorbricks')
-    .setOrigin(0, 0.5)
-    .refreshBody()
+  // Havada duran özel bloklarımızı (platformları) ekliyoruz
+  this.floor.create(200, 350, 'ozelBlok').refreshBody()
+  this.floor.create(250, 350, 'ozelBlok').refreshBody()
+  this.floor.create(300, 350, 'ozelBlok').refreshBody()
 
-  this.floor
-    .create(150, config.height - 16, 'floorbricks')
-    .setOrigin(0, 0.5)
-    .refreshBody()
-
+  // Karakter (Mario)
   this.mario = this.physics.add.sprite(50, 100, 'mario')
     .setOrigin(0, 1)
     .setCollideWorldBounds(true)
-    .setGravityY(300)
+    .setScale(2)
 
+  // Çarpışma ve Kamera
   this.physics.world.setBounds(0, 0, 2000, config.height)
   this.physics.add.collider(this.mario, this.floor)
-
   this.cameras.main.setBounds(0, 0, 2000, config.height)
   this.cameras.main.startFollow(this.mario)
 
   createAnimations(this)
 
+  // Klavye tuşları
   this.keys = this.input.keyboard.createCursorKeys()
 }
 
-function update () { // 3. continuamente
+function update () {
   if (this.mario.isDead) return
 
-  if (this.keys.left.isDown) {
+  // Klavye VEYA Ekrana Dokunma kontrolleri
+  if (this.keys.left.isDown || isLeftDown) {
     this.mario.anims.play('mario-walk', true)
-    this.mario.x -= 2
+    this.mario.setVelocityX(-160)
     this.mario.flipX = true
-  } else if (this.keys.right.isDown) {
+  } else if (this.keys.right.isDown || isRightDown) {
     this.mario.anims.play('mario-walk', true)
-    this.mario.x += 2
+    this.mario.setVelocityX(160)
     this.mario.flipX = false
   } else {
     this.mario.anims.play('mario-idle', true)
+    this.mario.setVelocityX(0)
   }
 
-  if (this.keys.up.isDown && this.mario.body.touching.down) {
-    this.mario.setVelocityY(-300)
+  // Zıplama
+  if ((this.keys.up.isDown || isJumpDown) && this.mario.body.touching.down) {
+    this.mario.setVelocityY(-400)
     this.mario.anims.play('mario-jump', true)
-  }
-
-  if (this.mario.y >= config.height) {
-    this.mario.isDead = true
-    this.mario.anims.play('mario-dead')
-    this.mario.setCollideWorldBounds(false)
-    this.sound.add('gameover', { volume: 0.2 }).play()
-
-    setTimeout(() => {
-      this.mario.setVelocityY(-350)
-    }, 100)
-
-    setTimeout(() => {
-      this.scene.restart()
-    }, 2000)
   }
 }
